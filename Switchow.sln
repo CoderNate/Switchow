@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31205.134
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Switchow", "Switchow\Switchow.csproj", "{316AD62E-3363-453D-9294-26A66DA09DB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HotkeyHelper", "HotkeyHelper\HotkeyHelper.csproj", "{8B93A8A7-A414-42A0-8F99-ACF1AE184319}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{316AD62E-3363-453D-9294-26A66DA09DB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{316AD62E-3363-453D-9294-26A66DA09DB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{316AD62E-3363-453D-9294-26A66DA09DB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{316AD62E-3363-453D-9294-26A66DA09DB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B93A8A7-A414-42A0-8F99-ACF1AE184319}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B93A8A7-A414-42A0-8F99-ACF1AE184319}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B93A8A7-A414-42A0-8F99-ACF1AE184319}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B93A8A7-A414-42A0-8F99-ACF1AE184319}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {885E003B-ECCD-4B63-9E11-8A1EAD7F53CD}
+	EndGlobalSection
+EndGlobal
