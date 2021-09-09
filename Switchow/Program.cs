@@ -35,6 +35,7 @@ namespace Switchow
             var allWindows = OpenWindowGetter.GetOpenWindows().AsParallel()
                 .WithDegreeOfParallelism(Math.Min(Environment.ProcessorCount, 4))
                 .Select(a => new WindowInfo(a.Key, a.Value, getWindowFilePath(a.Key)))
+                .Where(a => a.FileName != "Switchow")
                 .ToArray();
             //Console.WriteLine($"Took {sw}");
 
