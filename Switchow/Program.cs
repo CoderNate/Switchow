@@ -100,11 +100,22 @@ namespace Switchow
                     var fileName = wndInf.FileName;
                     var text = fileName + " | " + wndInf.WindowTitle;
                     var indexSets = GetStringMatchIndexSets(text, searchText.ToArray());
-                    var bestSet = indexSets.OrderByDescending(a => ScoreIndexSet(searchText, a, fileName.Length)).First();
-                    Console.Write(") ");
+                    var bestSet = indexSets
+                        .Select(indexSet => new { score = ScoreIndexSet(searchText, indexSet, fileName.Length), indexSet })
+                        .OrderByDescending(a => a.score)
+                        .First();
+                    const bool showScoreForDebug = false;
+                    if (showScoreForDebug)
+                    {
+                        Console.Write($") (score={bestSet.score}) ");
+                    }
+                    else
+                    {
+                        Console.Write($") ");
+                    }
                     for (var j = 0; j < text.Length; j++)
                     {
-                        var isMatch = bestSet.Contains(j);
+                        var isMatch = bestSet.indexSet.Contains(j);
                         if (isMatch)
                         {
                             Console.ForegroundColor = ConsoleColor.Green;
@@ -132,8 +143,8 @@ namespace Switchow
             var remainingIndicesCount = set.Length - fileNameIndicesCount;
             // Penalty for any unused characters
             var penalty = (searchText.Length - set.Length) * 5;
-            var seuqncesBonus = GetSequentialNumberSets(set).Length * 3;
-            return seuqncesBonus + fileNameIndicesCount * 3 + remainingIndicesCount * 1 - penalty;
+            var sequencesBonus = GetSequentialNumberSets(set).Sum(a => a.Length + 1);
+            return sequencesBonus + fileNameIndicesCount * 3 + remainingIndicesCount * 1 - penalty;
         }
         static int GetScore(string searchText, string fileName, string windowTitle)
         {
