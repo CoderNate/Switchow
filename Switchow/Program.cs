@@ -35,12 +35,12 @@ namespace Switchow
             var allWindows = OpenWindowGetter.GetOpenWindows().AsParallel()
                 .WithDegreeOfParallelism(Math.Min(Environment.ProcessorCount, 4))
                 .Select(a => new WindowInfo(a.Key, a.Value, getWindowFilePath(a.Key)))
-                .Where(a => a.FileName != "Switchow")
+                .Where(a => a.Entry.FileName != "Switchow")
                 .ToArray();
             //Console.WriteLine($"Took {sw}");
 
             var chars = new List<char>();
-            Dictionary<int, IntPtr> handlesDict = null;
+            var handlesDict = new Dictionary<int, IntPtr>();
             while (true)
             {
                 var keyInfo = Console.ReadKey(intercept: true);
@@ -49,16 +49,18 @@ namespace Switchow
                 {
                     return;
                 }
+                var isAltShortcut = (keyInfo.Modifiers & ConsoleModifiers.Alt) == ConsoleModifiers.Alt;
+                if (isAltShortcut) { }
                 else if (keyInfo.Key == ConsoleKey.Enter)
                 {
                     var windowIndex = 0;
-                    if (handlesDict != null && handlesDict.TryGetValue(windowIndex, out var handle))
+                    if (handlesDict.TryGetValue(windowIndex, out var handle))
                     {
                         SetForegroundWindow(handle);
                         break;
                     }
                 }
-                if (keyInfo.Key == ConsoleKey.Backspace)
+                else if (keyInfo.Key == ConsoleKey.Backspace)
                 {
                     if (chars.Count > 0)
                     {
@@ -70,10 +72,26 @@ namespace Switchow
                     chars.Add(keyInfo.KeyChar);
                 }
                 var searchText = string.Join("", chars);
-                var sortedWindows = allWindows
-                    .Select(wndInf => new { wndInf, score = GetScore(searchText, wndInf.FileName, wndInf.WindowTitle) })
-                    .Where(a => a.score > 0)
+                var allSortedWindows = allWindows
+                    .Select(wndInf => new { wndInf, score = GetScore(searchText, wndInf.Entry) })
                     .OrderByDescending(a => a.score)
+                    .ToArray();
+                if (isAltShortcut)
+                {
+                    foreach (var entry in allSortedWindows)
+                    {
+                        var wndInf = entry.wndInf;
+                        var chr = GetShortcutChar(wndInf.Entry);
+                        if (chr == keyInfo.KeyChar)
+                        {
+                            SetForegroundWindow(wndInf.Handle);
+                            return;
+                        }
+                    }
+                }
+
+                var sortedWindows = allSortedWindows
+                    .Where(a => a.score > 0)
                     .Select(a => a.wndInf)
                     .ToArray();
                 handlesDict = sortedWindows
@@ -88,39 +106,42 @@ namespace Switchow
         {
             var startColor = Console.ForegroundColor;
             Console.Clear();
+            Console.WriteLine("Press Enter to select the top match or Alt + label (case sensitive)");
             for (var i = 0; i < DisplayLineCount; i++)
             {
                 if (i < sortedWindows.Length)
                 {
                     var wndInf = sortedWindows[i];
+                    var fileName = wndInf.Entry.FileName;
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.Write(i);
+                    Console.Write(GetShortcutChar(wndInf.Entry));
                     Console.ForegroundColor = startColor;
-
-                    var fileName = wndInf.FileName;
-                    var text = fileName + " | " + wndInf.WindowTitle;
-                    var indexSets = GetStringMatchIndexSets(text, searchText.ToArray());
+                    var indexSets = GetStringMatchIndexSets(searchText, wndInf.Entry);
                     var bestSet = indexSets
                         .Select(indexSet => new { score = ScoreIndexSet(searchText, indexSet, fileName.Length), indexSet })
                         .OrderByDescending(a => a.score)
                         .First();
+                    Console.Write($") ");
                     const bool showScoreForDebug = false;
                     if (showScoreForDebug)
                     {
-                        Console.Write($") (score={bestSet.score}) ");
+                        Console.Write($"(score={bestSet.score}) ");
                     }
-                    else
+                    var text = fileName + wndInf.Entry.WindowTitle;
+                    for (var charIndex = 0; charIndex < text.Length; charIndex++)
                     {
-                        Console.Write($") ");
-                    }
-                    for (var j = 0; j < text.Length; j++)
-                    {
-                        var isMatch = bestSet.indexSet.Contains(j);
+                        if (charIndex == fileName.Length)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Cyan;
+                            Console.Write(" | "); // Separator between executable file name and the window title
+                            Console.ForegroundColor = startColor;
+                        }
+                        var isMatch = bestSet.indexSet.Contains(charIndex);
                         if (isMatch)
                         {
                             Console.ForegroundColor = ConsoleColor.Green;
                         }
-                        Console.Write(text[j]);
+                        Console.Write(text[charIndex]);
                         if (isMatch)
                         {
                             Console.ForegroundColor = startColor;
@@ -136,20 +157,35 @@ namespace Switchow
             Console.Write(Prompt + searchText);
         }
 
+        private static readonly Lazy<char[]> _allShortcutChars = new Lazy<char[]>(() =>
+        {
+            static IEnumerable<char> enumerateChars(char start, char end)
+                => Enumerable.Range(start, end - start + 1).Select(a => (char)a);
+            return enumerateChars('a', 'z')
+                .Concat(enumerateChars('A', 'Z'))
+                .Concat(new[] { ';', '[', ']', '\\', '/' }).ToArray();
+        });
+        static char GetShortcutChar(Entry entry)
+        {
+            var text = entry.FileName + entry.WindowTitle;
+            var charIndex = Math.Abs(GetStableStringHashCode(text)) % _allShortcutChars.Value.Length;
+            return _allShortcutChars.Value[charIndex];
+        }
+
         static int ScoreIndexSet(string searchText, int[] set, int fileNameLength)
         {
             // Matches on the file name are weighted more than on the window title
-            var fileNameIndicesCount = set.Count(a => a <= fileNameLength);
+            var fileNameIndicesCount = set.Count(charIndex => charIndex <= fileNameLength);
             var remainingIndicesCount = set.Length - fileNameIndicesCount;
             // Penalty for any unused characters
             var penalty = (searchText.Length - set.Length) * 5;
-            var sequencesBonus = GetSequentialNumberSets(set).Sum(a => a.Length + 1);
-            return sequencesBonus + fileNameIndicesCount * 3 + remainingIndicesCount * 1 - penalty;
+            var sequencesBonus = GetSequentialNumberSets(set).Sum(a => (int)(a.Length * 1.5));
+            return sequencesBonus + (int)(fileNameIndicesCount * 2.5) + remainingIndicesCount * 1 - penalty;
         }
-        static int GetScore(string searchText, string fileName, string windowTitle)
+        static int GetScore(string searchText, Entry entry)
         {
-            var indexSets = GetStringMatchIndexSets(fileName + windowTitle, searchText.ToArray());
-            return indexSets.Select(set => ScoreIndexSet(searchText, set, fileName.Length)).DefaultIfEmpty(0).Max();
+            var indexSets = GetStringMatchIndexSets(searchText, entry);
+            return indexSets.Select(set => ScoreIndexSet(searchText, set, entry.FileName.Length)).DefaultIfEmpty(0).Max();
         }
 
         /// <summary> Get all sequences of at least 2 consecutive numbers </summary>
@@ -173,6 +209,11 @@ namespace Switchow
                 }
             }
             return sequences.ToArray();
+        }
+
+        static int[][] GetStringMatchIndexSets(string searchText, Entry entry)
+        {
+            return GetStringMatchIndexSets(entry.FileName + entry.WindowTitle, searchText.ToArray());
         }
 
         /// <summary>
@@ -200,16 +241,31 @@ namespace Switchow
             return results.ToArray();
         }
 
+        private static int GetStableStringHashCode(string text)
+        {
+            unchecked
+            {
+                return text.Aggregate(23, (int acc, char c) => acc * 31 + c);
+            }
+        }
+
         public class WindowInfo
         {
             public WindowInfo(IntPtr handle, string windowTitle, string fileName)
             {
                 Handle = handle;
+                Entry = new Entry(windowTitle: windowTitle, fileName: fileName);
+            }
+            public IntPtr Handle { get; }
+            public Entry Entry { get; }
+        }
+        public class Entry
+        {
+            public Entry(string windowTitle, string fileName)
+            {
                 WindowTitle = windowTitle;
                 FileName = fileName;
             }
-
-            public IntPtr Handle { get; }
             public string WindowTitle { get; }
             public string FileName { get; }
         }

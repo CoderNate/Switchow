@@ -4,12 +4,12 @@ A very simple Windows console app for switching between your open application wi
 
 ## Usage
 
-Just start typing and a list of matching application windows will be shown.  Press enter to set the top window in the list as the foreground window.  The format of the list is `EXECUTABLE_NAME | WINDOW_TITLE`.  Matches on the executable name are weighted more strongly than matches on the window title.  Example:
+Just start typing and a list of matching application windows will be shown.  Press enter to set the top window in the list as the foreground window.  The format of the list is `EXECUTABLE_NAME | WINDOW_TITLE`.  Matches on the executable name are weighted more strongly than matches on the window title.  Press Alt + entry label if the one you want isn't at the top. The label is created by hashing so it will stay the same as long as the Window title doesn't change; the drawback is that there's a chance of hash collisions. Example:
 ```
-0) notepad | *Untitled - Notepad
-1) devenv | Switchow - Microsoft Visual Studio
-2) Explorer | Documents
-3) msedge | Google
+a) notepad | *Untitled - Notepad
+B) devenv | Switchow - Microsoft Visual Studio
+j) Explorer | Documents
+;) msedge | Google
 
 > e
 ```
